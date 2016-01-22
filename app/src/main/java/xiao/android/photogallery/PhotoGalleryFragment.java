@@ -1,6 +1,11 @@
 package xiao.android.photogallery;
 
 
+import android.app.SearchManager;
+import android.app.SearchableInfo;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -8,6 +13,8 @@ import android.os.Handler;
 import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
 import android.support.v4.util.LruCache;
+import android.support.v4.view.MenuItemCompat;
+import android.support.v7.widget.SearchView;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -32,6 +39,7 @@ public class PhotoGalleryFragment extends Fragment {
     private ThumbnailDownloader<ImageView> mThumbnailThread;
 
     private LruCache<String, Bitmap> mLruCache;
+    private SearchView mSearchView;
 
     public static PhotoGalleryFragment newInstance() {
         return new PhotoGalleryFragment();
@@ -39,8 +47,8 @@ public class PhotoGalleryFragment extends Fragment {
 
     public PhotoGalleryFragment() {
         // Required empty public constructor
-
     }
+
 
     private void setupAdapter() {
         if (getActivity() == null || mGridView == null) return;
@@ -55,13 +63,36 @@ public class PhotoGalleryFragment extends Fragment {
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
         super.onCreateOptionsMenu(menu, inflater);
         inflater.inflate(R.menu.fragment_photo_gallery, menu);
+        MenuItem actionSearch = menu.findItem(R.id.menu_item_search);
+        mSearchView = (SearchView) MenuItemCompat.getActionView(actionSearch);
+        if (mSearchView == null) {
+            Log.d(TAG, "it is null");
+        }
+        if (mSearchView != null) {
+            SearchManager searchManager = (SearchManager) getActivity().getSystemService(Context.SEARCH_SERVICE);
+            ComponentName componentName = getActivity().getComponentName();
+            SearchableInfo searchableInfo = searchManager.getSearchableInfo(componentName);
+            mSearchView.setSearchableInfo(searchableInfo);
+            mSearchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+                @Override
+                public boolean onQueryTextSubmit(String query) {
+                    return false;
+                }
+
+                @Override
+                public boolean onQueryTextChange(String newText) {
+                    return false;
+                }
+            });
+        }
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case R.id.menu_item_search:
-                getActivity().onSearchRequested();
+                if (mSearchView == null)
+                    getActivity().onSearchRequested();
                 return true;
             case R.id.menu_item_clear:
                 return true;
@@ -102,6 +133,7 @@ public class PhotoGalleryFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_photo_gallery, container, false);
         mGridView = (GridView) view.findViewById(R.id.gridView);
         setupAdapter();
+
         return view;
     }
 
