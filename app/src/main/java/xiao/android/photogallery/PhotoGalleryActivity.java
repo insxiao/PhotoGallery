@@ -3,10 +3,9 @@ package xiao.android.photogallery;
 import android.app.SearchManager;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
-import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import android.util.Log;
 
 public class PhotoGalleryActivity extends SingleFragmentActivity {
@@ -15,13 +14,18 @@ public class PhotoGalleryActivity extends SingleFragmentActivity {
     private SharedPreferences mDefaultSharedPreferences;
 
     @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        mDefaultSharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+    }
+
+    @Override
     protected void onNewIntent(Intent intent) {
-        if (intent.getAction() == Intent.ACTION_SEARCH) {
+        if (Intent.ACTION_SEARCH.equals(intent.getAction())) {
             String query = intent.getStringExtra(SearchManager.QUERY);
-            PhotoGalleryFragment fragment = (PhotoGalleryFragment)getSupportFragmentManager()
+            PhotoGalleryFragment fragment = (PhotoGalleryFragment) getSupportFragmentManager()
                     .findFragmentById(R.id.fragment_container);
             Log.d(TAG, "onNewIntent with string : " + query);
-            mDefaultSharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
             SharedPreferences.Editor edit = mDefaultSharedPreferences.edit();
             edit.putString(FlickrFetchr.PREF_SEARCH_QUERY, query);
             fragment.updateItems();

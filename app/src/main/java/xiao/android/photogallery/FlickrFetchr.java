@@ -16,7 +16,8 @@ import java.net.URL;
 import java.util.ArrayList;
 
 /**
- * Created by Xiao on 2016/1/11.
+ * Created by insxiao on 2016/1/11.
+ * Class FlickrFetchr
  */
 public class FlickrFetchr {
 
@@ -54,9 +55,7 @@ public class FlickrFetchr {
     }
     public byte[] getUrlBytes(String urlSpec) throws IOException {
         URL url = new URL(urlSpec);
-        if (url == null) {
-            Log.d(TAG, "url is null");
-        }
+
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 
         try {
@@ -67,7 +66,7 @@ public class FlickrFetchr {
                 return null;
             }
 
-            int bytesRead = 0;
+            int bytesRead;
             byte[] buffer = new byte[1024];
             while ((bytesRead = in.read(buffer)) > 0) {
                 out.write(buffer, 0, bytesRead);
@@ -89,8 +88,6 @@ public class FlickrFetchr {
         try {
 
             String xmlString = getUrl(url);
-
-            Log.d(TAG, xmlString);
 
             XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
             XmlPullParser parser = factory.newPullParser();
