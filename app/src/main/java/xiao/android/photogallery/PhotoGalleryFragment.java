@@ -40,6 +40,8 @@ public class PhotoGalleryFragment extends Fragment {
 
     private LruCache<String, Bitmap> mLruCache;
     private SearchView mSearchView;
+    private MenuItem mActionSearch;
+    private SharedPreferences mDefaultSharedPreferences;
 
     public static PhotoGalleryFragment newInstance() {
         return new PhotoGalleryFragment();
@@ -63,8 +65,8 @@ public class PhotoGalleryFragment extends Fragment {
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
         super.onCreateOptionsMenu(menu, inflater);
         inflater.inflate(R.menu.fragment_photo_gallery, menu);
-        MenuItem actionSearch = menu.findItem(R.id.menu_item_search);
-        mSearchView = (SearchView) MenuItemCompat.getActionView(actionSearch);
+        mActionSearch = menu.findItem(R.id.menu_item_search);
+        mSearchView = (SearchView) MenuItemCompat.getActionView(mActionSearch);
         if (mSearchView == null) {
             Log.d(TAG, "it is null");
         }
@@ -76,7 +78,10 @@ public class PhotoGalleryFragment extends Fragment {
             mSearchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
                 @Override
                 public boolean onQueryTextSubmit(String query) {
-                    return false;
+                    mDefaultSharedPreferences.edit().putString(FlickrFetchr.PREF_SEARCH_QUERY, query);
+                    updateItems();
+                    mActionSearch.collapseActionView();
+                    return true;
                 }
 
                 @Override
@@ -95,6 +100,7 @@ public class PhotoGalleryFragment extends Fragment {
                     getActivity().onSearchRequested();
                 return true;
             case R.id.menu_item_clear:
+                mDefaultSharedPreferences.edit().remove(FlickrFetchr.PREF_SEARCH_QUERY);
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
@@ -106,6 +112,7 @@ public class PhotoGalleryFragment extends Fragment {
         super.onCreate(savedInstanceState);
         setRetainInstance(true);
         setHasOptionsMenu(true);
+        mDefaultSharedPreferences = PreferenceManager.getDefaultSharedPreferences(getActivity());
         mLruCache = new LruCache<>(1024);
         mThumbnailThread = new ThumbnailDownloader<>(new Handler());
         mThumbnailThread.setListener(new ThumbnailDownloader.Listener<ImageView>() {
@@ -194,7 +201,7 @@ public class PhotoGalleryFragment extends Fragment {
 
         @Override
         protected ArrayList<GalleryItem> doInBackground(Void... params) {
-            String query = PreferenceManager.getDefaultSharedPreferences(getActivity())
+            String query = mDefaultSharedPreferences
                     .getString(FlickrFetchr.PREF_SEARCH_QUERY, null);
             if (query == null)
                 return new FlickrFetchr().fetchItems();

@@ -35,7 +35,6 @@ public class PhotoGalleryActivity extends SingleFragmentActivity {
 
     @Override
     protected void onDestroy() {
-        mDefaultSharedPreferences.edit().remove(FlickrFetchr.PREF_SEARCH_QUERY);
         super.onDestroy();
     }
 
