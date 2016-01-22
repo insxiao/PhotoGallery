@@ -5,6 +5,7 @@ import android.app.SearchManager;
 import android.app.SearchableInfo;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.os.AsyncTask;
@@ -47,18 +48,44 @@ public class PhotoGalleryFragment extends Fragment {
         return new PhotoGalleryFragment();
     }
 
-    public PhotoGalleryFragment() {
-        // Required empty public constructor
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setRetainInstance(true);
+        setHasOptionsMenu(true);
+        mDefaultSharedPreferences = PreferenceManager.getDefaultSharedPreferences(getActivity());
+        mLruCache = new LruCache<>(1024);
+        mThumbnailThread = new ThumbnailDownloader<>(new Handler());
+        mThumbnailThread.setListener(new ThumbnailDownloader.Listener<ImageView>() {
+            @Override
+            public void onThumbnailDownloaded(ImageView imageView, Bitmap thumbnail, String url) {
+                if (isVisible()) {
+                    mLruCache.put(url, thumbnail);
+                    imageView.setImageBitmap(thumbnail);
+                    imageView.setVisibility(View.VISIBLE);
+                }
+            }
+        });
+
+        mThumbnailThread.start();
+        mThumbnailThread.getLooper();
+
+        Intent intent = new Intent(getActivity(), PollService.class);
+        getActivity().startService(intent);
+
+        updateItems();
+
+        Log.i(TAG, "background thread started");
     }
 
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+                             Bundle savedInstanceState) {
+        View view = inflater.inflate(R.layout.fragment_photo_gallery, container, false);
+        mGridView = (GridView) view.findViewById(R.id.gridView);
+        setupAdapter();
 
-    private void setupAdapter() {
-        if (getActivity() == null || mGridView == null) return;
-        if (mItems != null) {
-            mGridView.setAdapter(new GalleryItemAdapter(mItems));
-        } else {
-            mGridView.setAdapter(null);
-        }
+        return view;
     }
 
     @Override
@@ -96,8 +123,7 @@ public class PhotoGalleryFragment extends Fragment {
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case R.id.menu_item_search:
-                if (mSearchView == null)
-                    getActivity().onSearchRequested();
+                getActivity().onSearchRequested();
                 return true;
             case R.id.menu_item_clear:
                 mDefaultSharedPreferences.edit().remove(FlickrFetchr.PREF_SEARCH_QUERY);
@@ -107,41 +133,17 @@ public class PhotoGalleryFragment extends Fragment {
         }
     }
 
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setRetainInstance(true);
-        setHasOptionsMenu(true);
-        mDefaultSharedPreferences = PreferenceManager.getDefaultSharedPreferences(getActivity());
-        mLruCache = new LruCache<>(1024);
-        mThumbnailThread = new ThumbnailDownloader<>(new Handler());
-        mThumbnailThread.setListener(new ThumbnailDownloader.Listener<ImageView>() {
-            @Override
-            public void onThumbnailDownloaded(ImageView imageView, Bitmap thumbnail, String url) {
-                if (isVisible()) {
-                    mLruCache.put(url, thumbnail);
-                    imageView.setImageBitmap(thumbnail);
-                    imageView.setVisibility(View.VISIBLE);
-                }
-            }
-        });
-
-        mThumbnailThread.start();
-        mThumbnailThread.getLooper();
-
-        updateItems();
-
-        Log.i(TAG, "background thread started");
+    private void setupAdapter() {
+        if (getActivity() == null || mGridView == null) return;
+        if (mItems != null) {
+            mGridView.setAdapter(new GalleryItemAdapter(mItems));
+        } else {
+            mGridView.setAdapter(null);
+        }
     }
 
-    @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.fragment_photo_gallery, container, false);
-        mGridView = (GridView) view.findViewById(R.id.gridView);
-        setupAdapter();
-
-        return view;
+    public void updateItems() {
+        new FetchItemsTask().execute();
     }
 
     @Override
@@ -155,10 +157,6 @@ public class PhotoGalleryFragment extends Fragment {
         super.onDestroy();
         mThumbnailThread.quit();
         Log.d(TAG, "background thread stopped");
-    }
-
-    public void updateItems() {
-        new FetchItemsTask().execute();
     }
 
     private class GalleryItemAdapter extends ArrayAdapter<GalleryItem> {
@@ -197,7 +195,6 @@ public class PhotoGalleryFragment extends Fragment {
     }
 
     public class FetchItemsTask extends AsyncTask<Void, Void, ArrayList<GalleryItem>> {
-
 
         @Override
         protected ArrayList<GalleryItem> doInBackground(Void... params) {

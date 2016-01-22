@@ -33,6 +33,7 @@ public class FlickrFetchr {
     private static final String EXTRA_SMALL_URL = "url_s";
     public static final String XML_PHOTO = "photo";
     public static final String PREF_SEARCH_QUERY = "searchQuery";
+    public static final String PREF_LAST_RESULT_ID = "lastResultId";
 
     private String getRecentURL() {
         return Uri.parse(ENDPOINT).buildUpon().appendQueryParameter("api_key", API_KEY)
