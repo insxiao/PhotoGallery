@@ -90,6 +90,8 @@ public class PhotoGalleryFragment extends Fragment {
         mThumbnailThread.start();
         mThumbnailThread.getLooper();
 
+        updateItems();
+
         Log.i(TAG, "background thread started");
     }
 

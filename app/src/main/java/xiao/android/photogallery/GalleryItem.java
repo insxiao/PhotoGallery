@@ -8,6 +8,16 @@ public class GalleryItem {
     private String mCaption;
     private String mUrl;
 
+    public String getOwner() {
+        return mOwner;
+    }
+
+    public void setOwner(String owner) {
+        mOwner = owner;
+    }
+
+    private String mOwner;
+
     public String getId() {
         return mId;
     }
@@ -18,6 +28,13 @@ public class GalleryItem {
 
     public String getCaption() {
         return mCaption;
+    }
+
+    public GalleryItem(String id, String owner, String caption, String url) {
+        mId = id;
+        mCaption = caption;
+        mUrl = url;
+        mOwner = owner;
     }
 
     public void setCaption(String caption) {

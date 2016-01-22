@@ -30,6 +30,7 @@ public class FlickrFetchr {
 
     private static final String EXTRA_SMALL_URL = "url_s";
     public static final String XML_PHOTO = "photo";
+    public static final String PREF_SEARCH_QUERY = "searchQuery";
 
     private String getRecentURL() {
         return Uri.parse(ENDPOINT).buildUpon().appendQueryParameter("api_key", API_KEY)
@@ -47,11 +48,11 @@ public class FlickrFetchr {
 
     public ArrayList<GalleryItem> search(String query) {
         return downloadGalleryItems(getSearchURL(query));
-    };
+    }
     public ArrayList<GalleryItem> fetchItems() {
         return downloadGalleryItems(getRecentURL());
     }
-    byte[] getUrlBytes(String urlSpec) throws IOException {
+    public byte[] getUrlBytes(String urlSpec) throws IOException {
         URL url = new URL(urlSpec);
         if (url == null) {
             Log.d(TAG, "url is null");
@@ -89,6 +90,8 @@ public class FlickrFetchr {
 
             String xmlString = getUrl(url);
 
+            Log.d(TAG, xmlString);
+
             XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
             XmlPullParser parser = factory.newPullParser();
             parser.setInput(new StringReader(xmlString));
@@ -111,7 +114,8 @@ public class FlickrFetchr {
                 String id = parser.getAttributeValue(null, "id");
                 String title = parser.getAttributeValue(null, "title");
                 String smallUrl = parser.getAttributeValue(null, EXTRA_SMALL_URL);
-                GalleryItem item = new GalleryItem(id, title, smallUrl);
+                String owner = parser.getAttributeValue(null, "owner");
+                GalleryItem item = new GalleryItem(id, owner, title, smallUrl);
                 items.add(item);
             }
             eventType = parser.next();
