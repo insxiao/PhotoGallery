@@ -39,7 +39,6 @@ public class PhotoGalleryFragment extends Fragment {
     public static String TAG = "PhotoGalleryFragment";
     private ThumbnailDownloader<ImageView> mThumbnailThread;
 
-    private LruCache<String, Bitmap> mLruCache;
     private SearchView mSearchView;
     private MenuItem mActionSearch;
     private SharedPreferences mDefaultSharedPreferences;
@@ -54,13 +53,12 @@ public class PhotoGalleryFragment extends Fragment {
         setRetainInstance(true);
         setHasOptionsMenu(true);
         mDefaultSharedPreferences = PreferenceManager.getDefaultSharedPreferences(getActivity());
-        mLruCache = new LruCache<>(1024);
+
         mThumbnailThread = new ThumbnailDownloader<>(new Handler());
         mThumbnailThread.setListener(new ThumbnailDownloader.Listener<ImageView>() {
             @Override
             public void onThumbnailDownloaded(ImageView imageView, Bitmap thumbnail, String url) {
                 if (isVisible()) {
-                    mLruCache.put(url, thumbnail);
                     imageView.setImageBitmap(thumbnail);
                     imageView.setVisibility(View.VISIBLE);
                 }
@@ -70,8 +68,7 @@ public class PhotoGalleryFragment extends Fragment {
         mThumbnailThread.start();
         mThumbnailThread.getLooper();
 
-        Intent intent = new Intent(getActivity(), PollService.class);
-        getActivity().startService(intent);
+        PollService.setServiceAlarm(getActivity(), true);
 
         updateItems();
 
@@ -107,7 +104,7 @@ public class PhotoGalleryFragment extends Fragment {
                 public boolean onQueryTextSubmit(String query) {
                     mDefaultSharedPreferences.edit().putString(FlickrFetchr.PREF_SEARCH_QUERY, query);
                     updateItems();
-                    mActionSearch.collapseActionView();
+                    MenuItemCompat.collapseActionView(mActionSearch);
                     return true;
                 }
 
@@ -143,6 +140,7 @@ public class PhotoGalleryFragment extends Fragment {
     }
 
     public void updateItems() {
+        mThumbnailThread.clearQueue();
         new FetchItemsTask().execute();
     }
 
@@ -156,6 +154,7 @@ public class PhotoGalleryFragment extends Fragment {
     public void onDestroy() {
         super.onDestroy();
         mThumbnailThread.quit();
+        PollService.setServiceAlarm(getActivity(), false);
         Log.d(TAG, "background thread stopped");
     }
 
@@ -176,6 +175,7 @@ public class PhotoGalleryFragment extends Fragment {
                 @Override
                 public void onClick(View v) {
                     ImageView image = (ImageView) v;
+                    image.setVisibility(View.INVISIBLE);
                     GalleryItem item = (GalleryItem) v.getTag();
                     Log.d(TAG, item.getUrl());
 
@@ -184,12 +184,7 @@ public class PhotoGalleryFragment extends Fragment {
             GalleryItem item = getItem(position);
             image.setTag(item);
             String url = item.getUrl();
-            if (mLruCache.get(url) == null) {
                 mThumbnailThread.queueThumbnail(image, url);
-            } else {
-                image.setImageBitmap(mLruCache.get(url));
-                image.setVisibility(View.VISIBLE);
-            }
             return convertView;
         }
     }

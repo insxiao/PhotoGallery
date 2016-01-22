@@ -5,20 +5,21 @@ import android.graphics.BitmapFactory;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
+import android.support.v4.util.LruCache;
+import android.util.Log;
 
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Created by Xiao on 2016/1/18.
- */
+
 public class ThumbnailDownloader<Token> extends HandlerThread {
     private static final String TAG = "ThumbnailDownloader";
     private static final int MESSAGE_DOWNLOAD = 0;
     private Handler mResponseHandler;
     private Handler mHandler;
+    private LruCache<String, Bitmap> mLruCache = new LruCache<>(1024);
     private Map<Token, String> requestMap = Collections.synchronizedMap(new HashMap<Token, String>());
     private Listener<Token> mListener;
 
@@ -38,6 +39,7 @@ public class ThumbnailDownloader<Token> extends HandlerThread {
             @Override
             public void handleMessage(Message msg) {
                 if (msg.what == MESSAGE_DOWNLOAD) {
+                    @SuppressWarnings("unchecked")
                     Token token = (Token) msg.obj;
                     handleRequest(token);
                 }
@@ -57,12 +59,11 @@ public class ThumbnailDownloader<Token> extends HandlerThread {
                 return;
             }
 
-            byte[] bitmapBytes = new FlickrFetchr().getUrlBytes(url);
-            final Bitmap bitmap = BitmapFactory.decodeByteArray(bitmapBytes, 0, bitmapBytes.length);
+            final Bitmap bitmap = fetchBitmap(url);
             mResponseHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    if (requestMap.get(token) != url) {
+                    if (requestMap.get(token).equals(url)) {
                         return;
                     }
                     requestMap.remove(token);
@@ -70,8 +71,18 @@ public class ThumbnailDownloader<Token> extends HandlerThread {
                 }
             });
         } catch (IOException e) {
-
+            Log.d(TAG, "unable to fetch bitmap", e);
         }
+    }
+
+    private Bitmap fetchBitmap(String url) throws IOException {
+        Bitmap bitmap = mLruCache.get(url);
+        if (bitmap == null) {
+            byte[] bitmapBytes = new FlickrFetchr().getUrlBytes(url);
+            bitmap = BitmapFactory.decodeByteArray(bitmapBytes, 0, bitmapBytes.length);
+            mLruCache.put(url, bitmap);
+        }
+        return bitmap;
     }
 
     public void queueThumbnail(Token token, String url) {
