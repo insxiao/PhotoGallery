@@ -8,7 +8,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
+import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.preference.PreferenceManager;
@@ -23,6 +25,7 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.GridView;
 import android.widget.ImageView;
@@ -35,6 +38,7 @@ import java.util.ArrayList;
 public class PhotoGalleryFragment extends Fragment {
     private GridView mGridView;
     private ArrayList<GalleryItem> mItems;
+    private LruCache<String, Bitmap> mLruCache = new LruCache<>(1024);
 
     public static String TAG = "PhotoGalleryFragment";
     private ThumbnailDownloader<ImageView> mThumbnailThread;
@@ -60,7 +64,10 @@ public class PhotoGalleryFragment extends Fragment {
             public void onThumbnailDownloaded(ImageView imageView, Bitmap thumbnail, String url) {
                 if (isVisible()) {
                     imageView.setImageBitmap(thumbnail);
-                    imageView.setVisibility(View.VISIBLE);
+                    if (imageView.getTag().toString().equals(url)) {
+                        addBitmapToCache(url, thumbnail);
+                        imageView.setVisibility(View.VISIBLE);
+                    }
                 }
             }
         });
@@ -68,7 +75,6 @@ public class PhotoGalleryFragment extends Fragment {
         mThumbnailThread.start();
         mThumbnailThread.getLooper();
 
-        PollService.setServiceAlarm(getActivity(), true);
 
         updateItems();
 
@@ -80,6 +86,15 @@ public class PhotoGalleryFragment extends Fragment {
                              Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_photo_gallery, container, false);
         mGridView = (GridView) view.findViewById(R.id.gridView);
+        mGridView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                GalleryItem item = (GalleryItem) mGridView.getAdapter().getItem(position);
+                Intent intent = new Intent(getActivity(), PhotoPageActivity.class);
+                intent.setData(Uri.parse(item.getPhotoPageUrl()));
+                startActivity(intent);
+            }
+        });
         setupAdapter();
 
         return view;
@@ -102,7 +117,9 @@ public class PhotoGalleryFragment extends Fragment {
             mSearchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
                 @Override
                 public boolean onQueryTextSubmit(String query) {
-                    mDefaultSharedPreferences.edit().putString(FlickrFetchr.PREF_SEARCH_QUERY, query);
+                    mDefaultSharedPreferences.edit()
+                            .putString(FlickrFetchr.PREF_SEARCH_QUERY, query)
+                            .commit();
                     updateItems();
                     MenuItemCompat.collapseActionView(mActionSearch);
                     return true;
@@ -117,17 +134,45 @@ public class PhotoGalleryFragment extends Fragment {
     }
 
     @Override
+    public void onPrepareOptionsMenu(Menu menu) {
+        super.onPrepareOptionsMenu(menu);
+
+        MenuItem toggleItem = menu.findItem(R.id.menu_item_toggle_polling);
+        if (PollService.isServiceAlarmOn(getActivity())) {
+            toggleItem.setTitle(R.string.stop_polling);
+        } else {
+            toggleItem.setTitle(R.string.start_polling);
+        }
+    }
+
+    @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case R.id.menu_item_search:
                 getActivity().onSearchRequested();
                 return true;
             case R.id.menu_item_clear:
-                mDefaultSharedPreferences.edit().remove(FlickrFetchr.PREF_SEARCH_QUERY);
+                mDefaultSharedPreferences.edit().remove(FlickrFetchr.PREF_SEARCH_QUERY).commit();
+                return true;
+            case R.id.menu_item_toggle_polling:
+                boolean shouldStartAlarm = !PollService.isServiceAlarmOn(getActivity());
+                PollService.setServiceAlarm(getActivity(), shouldStartAlarm);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB)
+                    getActivity().invalidateOptionsMenu();
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
         }
+    }
+
+    private Bitmap getBitmapFromCache(String key) {
+        if (key != null)
+            return mLruCache.get(key);
+        else return null;
+    }
+
+    private Bitmap addBitmapToCache(String key, Bitmap bitmap) {
+        return mLruCache.put(key, bitmap);
     }
 
     private void setupAdapter() {
@@ -170,21 +215,31 @@ public class PhotoGalleryFragment extends Fragment {
             }
             ImageView image = (ImageView) convertView.findViewById(R.id.gallery_item_imageView);
 //                image.setImageResource(R.drawable.nicon);
-            image.setVisibility(View.INVISIBLE);
+
+
+            GalleryItem item = getItem(position);
+            image.setTag(item.getUrl());
+
+            String url = item.getUrl();
+
+            if (getBitmapFromCache(url) == null) {
+                image.setVisibility(View.INVISIBLE);
+                mThumbnailThread.queueThumbnail(image, url);
+            } else {
+                image.setVisibility(View.VISIBLE);
+                image.setImageBitmap(getBitmapFromCache(url));
+            }
+
+
             image.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
                     ImageView image = (ImageView) v;
-                    image.setVisibility(View.INVISIBLE);
-                    GalleryItem item = (GalleryItem) v.getTag();
-                    Log.d(TAG, item.getUrl());
+                    String url = (String) v.getTag();
+                    Log.d(TAG, url);
 
                 }
             });
-            GalleryItem item = getItem(position);
-            image.setTag(item);
-            String url = item.getUrl();
-                mThumbnailThread.queueThumbnail(image, url);
             return convertView;
         }
     }
