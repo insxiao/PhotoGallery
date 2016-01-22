@@ -83,6 +83,7 @@ public class PhotoGalleryFragment extends Fragment {
                 if (isVisible()) {
                     mLruCache.put(url, thumbnail);
                     imageView.setImageBitmap(thumbnail);
+                    imageView.setVisibility(View.VISIBLE);
                 }
             }
         });
@@ -133,7 +134,7 @@ public class PhotoGalleryFragment extends Fragment {
             }
             ImageView image = (ImageView) convertView.findViewById(R.id.gallery_item_imageView);
 //                image.setImageResource(R.drawable.nicon);
-            image.setImageResource(R.drawable.nicon);
+            image.setVisibility(View.INVISIBLE);
             image.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -150,6 +151,7 @@ public class PhotoGalleryFragment extends Fragment {
                 mThumbnailThread.queueThumbnail(image, url);
             } else {
                 image.setImageBitmap(mLruCache.get(url));
+                image.setVisibility(View.VISIBLE);
             }
             return convertView;
         }
