@@ -12,7 +12,7 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <activity
-            android:name=".PhotoGalleryActivity"
+            android:name=".activity.PhotoGalleryActivity"
             android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
@@ -29,18 +29,18 @@
         </activity>
 
         <service
-            android:name=".PollService"
+            android:name=".service.PollService"
             android:exported="false">
         </service>
 
         <receiver
-            android:name=".StartupReceiver"
+            android:name=".receiver.StartupReceiver"
             android:enabled="true"
             android:exported="true">
         </receiver>
 
         <activity
-            android:name=".PhotoPageActivity"
+            android:name=".activity.PhotoPageActivity"
             android:label="@string/title_activity_photo_page"
             android:theme="@style/AppTheme.NoActionBar">
         </activity>

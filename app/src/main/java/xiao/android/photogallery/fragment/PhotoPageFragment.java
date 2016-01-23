@@ -1,4 +1,4 @@
-package xiao.android.photogallery;
+package xiao.android.photogallery.fragment;
 
 import android.os.Bundle;
 import android.support.annotation.Nullable;
@@ -8,6 +8,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+
+import xiao.android.photogallery.R;
 
 public class PhotoPageFragment extends Fragment {
 

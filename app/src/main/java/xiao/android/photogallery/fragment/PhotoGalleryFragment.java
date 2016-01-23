@@ -1,4 +1,4 @@
-package xiao.android.photogallery;
+package xiao.android.photogallery.fragment;
 
 
 import android.app.SearchManager;
@@ -31,10 +31,16 @@ import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
 
+import xiao.android.photogallery.FlickrFetchr;
+import xiao.android.photogallery.GalleryItem;
+import xiao.android.photogallery.service.PollService;
+import xiao.android.photogallery.R;
+import xiao.android.photogallery.activity.PhotoPageActivity;
+
 /**
  * A simple {@link Fragment} subclass.
  */
-public class PhotoGalleryFragment extends Fragment {
+public class PhotoGalleryFragment extends VisibleFragment {
     private GridView mGridView;
     private ArrayList<GalleryItem> mItems;
     public static String TAG = "PhotoGalleryFragment";
@@ -97,6 +103,10 @@ public class PhotoGalleryFragment extends Fragment {
             mSearchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
                 @Override
                 public boolean onQueryTextSubmit(String query) {
+                    String lastQuery = mDefaultSharedPreferences.getString(FlickrFetchr.PREF_SEARCH_QUERY, null);
+                    if (lastQuery != null) {
+                        mSearchView.setQueryHint(lastQuery);
+                    }
                     mDefaultSharedPreferences.edit()
                             .putString(FlickrFetchr.PREF_SEARCH_QUERY, query)
                             .apply();
@@ -131,7 +141,9 @@ public class PhotoGalleryFragment extends Fragment {
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case R.id.menu_item_search:
-                getActivity().onSearchRequested();
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.HONEYCOMB)
+                    getActivity().onSearchRequested();
+
                 return true;
             case R.id.menu_item_clear:
                 mDefaultSharedPreferences.edit().remove(FlickrFetchr.PREF_SEARCH_QUERY).apply();

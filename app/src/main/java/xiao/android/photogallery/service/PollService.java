@@ -1,4 +1,4 @@
-package xiao.android.photogallery;
+package xiao.android.photogallery.service;
 
 import android.app.AlarmManager;
 import android.app.IntentService;
@@ -16,10 +16,17 @@ import android.util.Log;
 
 import java.util.ArrayList;
 
+import xiao.android.photogallery.FlickrFetchr;
+import xiao.android.photogallery.GalleryItem;
+import xiao.android.photogallery.R;
+import xiao.android.photogallery.activity.PhotoGalleryActivity;
+
 public class PollService extends IntentService {
 
     public static final String TAG = "PollService";
     public static final int POLL_NTERVAL = 1000 * 60 * 5;
+    public static final String ACTION_SHOW_NOTIFICATION = "xiao.android.photogallery.SHOW_NOTIFICATION";
+    public static final String PREF_IS_ALARM_ON = "isAlarmOn";
 
     public PollService() {
         super(TAG);
@@ -69,7 +76,7 @@ public class PollService extends IntentService {
             NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 
             nm.notify(0, notification);
-
+            sendBroadcast(new Intent(PollService.ACTION_SHOW_NOTIFICATION));
             Log.d(TAG, "Got a new result: " + resultID);
         } else {
             Log.d(TAG, "Got a old result: " + resultID);
@@ -90,6 +97,8 @@ public class PollService extends IntentService {
             alarmManager.cancel(pi);
             pi.cancel();
         }
+
+        PreferenceManager.getDefaultSharedPreferences(context).edit().putBoolean(PREF_IS_ALARM_ON, isOn);
     }
 
     public static boolean isServiceAlarmOn(Context context) {
