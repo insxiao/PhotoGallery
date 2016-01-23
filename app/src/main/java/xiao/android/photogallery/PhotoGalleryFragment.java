@@ -7,15 +7,12 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Handler;
 import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
-import android.support.v4.util.LruCache;
 import android.support.v4.view.MenuItemCompat;
 import android.support.v7.widget.SearchView;
 import android.util.Log;
@@ -40,9 +37,7 @@ import java.util.ArrayList;
 public class PhotoGalleryFragment extends Fragment {
     private GridView mGridView;
     private ArrayList<GalleryItem> mItems;
-    private LruCache<String, Bitmap> mLruCache = new LruCache<>(1024);
     public static String TAG = "PhotoGalleryFragment";
-    private ThumbnailDownloader<ImageView> mThumbnailThread;
 
     private SearchView mSearchView;
     private MenuItem mActionSearch;
@@ -58,23 +53,6 @@ public class PhotoGalleryFragment extends Fragment {
         setRetainInstance(true);
         setHasOptionsMenu(true);
         mDefaultSharedPreferences = PreferenceManager.getDefaultSharedPreferences(getActivity());
-
-        mThumbnailThread = new ThumbnailDownloader<>(new Handler());
-        mThumbnailThread.setListener(new ThumbnailDownloader.Listener<ImageView>() {
-            @Override
-            public void onThumbnailDownloaded(ImageView imageView, Bitmap thumbnail, String url) {
-                if (isVisible()) {
-                    imageView.setImageBitmap(thumbnail);
-                    addBitmapToCache(url, thumbnail);
-                    imageView.setVisibility(View.VISIBLE);
-
-                }
-            }
-        });
-
-        mThumbnailThread.start();
-        mThumbnailThread.getLooper();
-
 
         updateItems();
 
@@ -169,15 +147,6 @@ public class PhotoGalleryFragment extends Fragment {
         }
     }
 
-    private Bitmap getBitmapFromCache(String key) {
-        if (key != null)
-            return mLruCache.get(key);
-        else return null;
-    }
-
-    private Bitmap addBitmapToCache(String key, Bitmap bitmap) {
-        return mLruCache.put(key, bitmap);
-    }
 
     private void setupAdapter() {
         if (getActivity() == null || mGridView == null) return;
@@ -189,20 +158,17 @@ public class PhotoGalleryFragment extends Fragment {
     }
 
     public void updateItems() {
-        mThumbnailThread.clearQueue();
         new FetchItemsTask().execute();
     }
 
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        mThumbnailThread.clearQueue();
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
-        mThumbnailThread.quit();
         PollService.setServiceAlarm(getActivity(), false);
         Log.d(TAG, "background thread stopped");
     }
@@ -217,21 +183,11 @@ public class PhotoGalleryFragment extends Fragment {
             if (convertView == null) {
                 convertView = getActivity().getLayoutInflater().inflate(R.layout.gallery_item, parent, false);
             }
-            ImageView image = (ImageView) convertView.findViewById(R.id.gallery_item_imageView);
-//                image.setImageResource(R.drawable.nicon);
-
+            ImageView imageView = (ImageView) convertView.findViewById(R.id.gallery_item_imageView);
 
             GalleryItem item = getItem(position);
-            image.setTag(item.getUrl());
             String url = item.getUrl();
-            Picasso.with(getActivity()).load(url).into(image);
-//            if (getBitmapFromCache(url) == null) {
-//                image.setVisibility(View.INVISIBLE);
-//                mThumbnailThread.queueThumbnail(image, url);
-//            } else {
-//                image.setVisibility(View.VISIBLE);
-//                image.setImageBitmap(getBitmapFromCache(url));
-//            }
+            Picasso.with(getActivity()).load(url).into(imageView);
             return convertView;
         }
     }
