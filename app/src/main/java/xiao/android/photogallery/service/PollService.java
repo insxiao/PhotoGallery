@@ -1,9 +1,9 @@
 package xiao.android.photogallery.service;
 
+import android.app.Activity;
 import android.app.AlarmManager;
 import android.app.IntentService;
 import android.app.Notification;
-import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
@@ -27,6 +27,7 @@ public class PollService extends IntentService {
     public static final int POLL_NTERVAL = 1000 * 60 * 5;
     public static final String ACTION_SHOW_NOTIFICATION = "xiao.android.photogallery.SHOW_NOTIFICATION";
     public static final String PREF_IS_ALARM_ON = "isAlarmOn";
+    public static final String PERM_PRIVATE = "xiao.android.photogallery.PRIVATE";
 
     public PollService() {
         super(TAG);
@@ -72,18 +73,21 @@ public class PollService extends IntentService {
                     .setContentIntent(pi)
                     .setAutoCancel(true)
                     .build();
-
-            NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-
-            nm.notify(0, notification);
-            sendBroadcast(new Intent(PollService.ACTION_SHOW_NOTIFICATION));
+            showBackgroundNotification(0, notification);
             Log.d(TAG, "Got a new result: " + resultID);
         } else {
             Log.d(TAG, "Got a old result: " + resultID);
         }
         prefs.edit().putString(FlickrFetchr.PREF_LAST_RESULT_ID, lastResultId);
+    }
 
-        Log.i(TAG, "Received an intent: " + intent);
+
+    void showBackgroundNotification(int requestCode, Notification notification) {
+        Intent intent = new Intent(ACTION_SHOW_NOTIFICATION);
+        intent.putExtra("REQUEST_CODE", requestCode);
+        intent.putExtra("NOTIFICATION", notification);
+
+        sendOrderedBroadcast(intent, PERM_PRIVATE, null, null, Activity.RESULT_OK, null, null);
     }
 
     public static void setServiceAlarm(Context context, boolean isOn) {
@@ -108,4 +112,6 @@ public class PollService extends IntentService {
 
         return pi != null;
     }
+
+
 }

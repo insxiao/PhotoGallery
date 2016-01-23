@@ -1,19 +1,14 @@
 package xiao.android.photogallery.fragment;
 
 
+import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.os.Bundle;
 import android.support.v4.app.Fragment;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.TextView;
-import android.widget.Toast;
+import android.util.Log;
 
-import xiao.android.photogallery.R;
 import xiao.android.photogallery.service.PollService;
 
 /**
@@ -22,10 +17,14 @@ import xiao.android.photogallery.service.PollService;
 public class VisibleFragment extends Fragment {
 
 
+    public static final String TAG = "VisibleFragment";
     private BroadcastReceiver mOnShowNotification = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            Toast.makeText(getActivity(), "New broadcast intent incoming", Toast.LENGTH_SHORT).show();
+            Log.i(TAG, "canceling");
+
+
+            setResultCode(Activity.RESULT_OK);
         }
     };
 
@@ -37,7 +36,7 @@ public class VisibleFragment extends Fragment {
     public void onResume() {
         super.onResume();
         IntentFilter intentFilter = new IntentFilter(PollService.ACTION_SHOW_NOTIFICATION);
-        getActivity().registerReceiver(mOnShowNotification, intentFilter);
+        getActivity().registerReceiver(mOnShowNotification, intentFilter, PollService.PERM_PRIVATE, null);
     }
 
     @Override
