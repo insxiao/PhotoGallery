@@ -30,6 +30,8 @@ import android.widget.ArrayAdapter;
 import android.widget.GridView;
 import android.widget.ImageView;
 
+import com.squareup.picasso.Picasso;
+
 import java.util.ArrayList;
 
 /**
@@ -39,7 +41,6 @@ public class PhotoGalleryFragment extends Fragment {
     private GridView mGridView;
     private ArrayList<GalleryItem> mItems;
     private LruCache<String, Bitmap> mLruCache = new LruCache<>(1024);
-
     public static String TAG = "PhotoGalleryFragment";
     private ThumbnailDownloader<ImageView> mThumbnailThread;
 
@@ -64,10 +65,9 @@ public class PhotoGalleryFragment extends Fragment {
             public void onThumbnailDownloaded(ImageView imageView, Bitmap thumbnail, String url) {
                 if (isVisible()) {
                     imageView.setImageBitmap(thumbnail);
-                    if (imageView.getTag().toString().equals(url)) {
-                        addBitmapToCache(url, thumbnail);
-                        imageView.setVisibility(View.VISIBLE);
-                    }
+                    addBitmapToCache(url, thumbnail);
+                    imageView.setVisibility(View.VISIBLE);
+
                 }
             }
         });
@@ -93,8 +93,10 @@ public class PhotoGalleryFragment extends Fragment {
                 Intent intent = new Intent(getActivity(), PhotoPageActivity.class);
                 intent.setData(Uri.parse(item.getPhotoPageUrl()));
                 startActivity(intent);
+                Log.d(TAG, "GridView::OnItemClickListener: " + position);
             }
         });
+        mGridView.requestFocusFromTouch();
         setupAdapter();
 
         return view;
@@ -119,9 +121,11 @@ public class PhotoGalleryFragment extends Fragment {
                 public boolean onQueryTextSubmit(String query) {
                     mDefaultSharedPreferences.edit()
                             .putString(FlickrFetchr.PREF_SEARCH_QUERY, query)
-                            .commit();
+                            .apply();
                     updateItems();
                     MenuItemCompat.collapseActionView(mActionSearch);
+                    SearchView searchView = (SearchView) MenuItemCompat.getActionView(mActionSearch);
+                    searchView.clearFocus();
                     return true;
                 }
 
@@ -152,7 +156,7 @@ public class PhotoGalleryFragment extends Fragment {
                 getActivity().onSearchRequested();
                 return true;
             case R.id.menu_item_clear:
-                mDefaultSharedPreferences.edit().remove(FlickrFetchr.PREF_SEARCH_QUERY).commit();
+                mDefaultSharedPreferences.edit().remove(FlickrFetchr.PREF_SEARCH_QUERY).apply();
                 return true;
             case R.id.menu_item_toggle_polling:
                 boolean shouldStartAlarm = !PollService.isServiceAlarmOn(getActivity());
@@ -219,27 +223,15 @@ public class PhotoGalleryFragment extends Fragment {
 
             GalleryItem item = getItem(position);
             image.setTag(item.getUrl());
-
             String url = item.getUrl();
-
-            if (getBitmapFromCache(url) == null) {
-                image.setVisibility(View.INVISIBLE);
-                mThumbnailThread.queueThumbnail(image, url);
-            } else {
-                image.setVisibility(View.VISIBLE);
-                image.setImageBitmap(getBitmapFromCache(url));
-            }
-
-
-            image.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    ImageView image = (ImageView) v;
-                    String url = (String) v.getTag();
-                    Log.d(TAG, url);
-
-                }
-            });
+            Picasso.with(getActivity()).load(url).into(image);
+//            if (getBitmapFromCache(url) == null) {
+//                image.setVisibility(View.INVISIBLE);
+//                mThumbnailThread.queueThumbnail(image, url);
+//            } else {
+//                image.setVisibility(View.VISIBLE);
+//                image.setImageBitmap(getBitmapFromCache(url));
+//            }
             return convertView;
         }
     }
@@ -262,6 +254,4 @@ public class PhotoGalleryFragment extends Fragment {
             setupAdapter();
         }
     }
-
-
 }

@@ -4,6 +4,8 @@ public class GalleryItem {
     private String mId;
     private String mCaption;
     private String mUrl;
+    private String mSecret;
+    private String mServer;
 
     public String getOwner() {
         return mOwner;
